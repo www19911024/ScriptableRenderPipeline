@@ -29,7 +29,7 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
             public static GUIContent mainLightRenderingModeText = EditorGUIUtility.TrTextContent("Main Light", "Main light is the brightest directional light.");
             public static GUIContent supportsMainLightShadowsText = EditorGUIUtility.TrTextContent("Cast Shadows", "If enabled the main light can be a shadow casting light.");
             public static GUIContent mainLightShadowmapResolutionText = EditorGUIUtility.TrTextContent("Shadow Resolution", "Resolution of the main light shadowmap texture. If cascades are enabled, cascades will be packed into an atlas and this setting controls the maximum shadows atlas resolution.");
-            
+
             // Additional lights
             public static GUIContent addditionalLightsRenderingModeText = EditorGUIUtility.TrTextContent("Additional Lights", "Additional lights support.");
             public static GUIContent perObjectLimit = EditorGUIUtility.TrTextContent("Per Object Limit", "Maximum amount of additional lights. These lights are sorted and culled per-object.");
@@ -46,13 +46,21 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
             public static GUIContent mixedLightingSupportLabel = EditorGUIUtility.TrTextContent("Mixed Lighting", "Support for mixed light mode.");
 
             // Dropdown menu options
-            public static string[] mainLightOptions = {"None", "Pixel Lighting"};
-            public static string[] additionalLightsOptions = {"None", "Pixel Lighting", "Vertex Lighting"};
+            public static string[] mainLightOptions = { "None", "Pixel Lighting" };
+            public static string[] additionalLightsOptions = { "None", "Pixel Lighting", "Vertex Lighting" };
+
+            public enum additionalLightsOptionsEnum {
+            None = 0,
+            VertexLighting = 2,
+            PixelLighting = 1
+            };
             public static string[] shadowCascadeOptions = {"No Cascades", "Two Cascades", "Four Cascades"};
             public static string[] opaqueDownsamplingOptions = {"None", "2x (Bilinear)", "4x (Box)", "4x (Bilinear)"};
 
             public static GUIContent XRConfig = EditorGUIUtility.TrTextContent("XR Graphics Settings", "SRP will attempt to set this configuration to the VRDevice.");
         }
+
+        internal static LightRenderingMode selectedLightRenderingMode = LightRenderingMode.Disabled;
 
         bool m_GeneralSettingsFoldout = false;
         bool m_QualitySettingsFoldout = false;
@@ -86,7 +94,7 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
         SerializedProperty m_ShadowCascade2SplitProp;
         SerializedProperty m_ShadowCascade4SplitProp;
 
-        
+
         SerializedProperty m_SoftShadowsSupportedProp;
 
         SerializedProperty m_SupportsDynamicBatching;
@@ -121,7 +129,7 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
             m_MainLightRenderingModeProp = serializedObject.FindProperty("m_MainLightRenderingMode");
             m_MainLightShadowsSupportedProp = serializedObject.FindProperty("m_MainLightShadowsSupported");
             m_MainLightShadowmapResolutionProp = serializedObject.FindProperty("m_MainLightShadowmapResolution");
-            
+
             m_AdditionalLightsRenderingModeProp = serializedObject.FindProperty("m_AdditionalLightsRenderingMode");
             m_AdditionalLightsPerObjectLimitProp = serializedObject.FindProperty("m_AdditionalLightsPerObjectLimit");
             m_AdditionalLightShadowsSupportedProp = serializedObject.FindProperty("m_AdditionalLightShadowsSupported");
@@ -141,7 +149,7 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
 
         void DrawGeneralSettings()
         {
-            m_GeneralSettingsFoldout = EditorGUILayout.Foldout(m_GeneralSettingsFoldout, Styles.generalSettingsText, true);
+            m_GeneralSettingsFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_GeneralSettingsFoldout, Styles.generalSettingsText);
             if (m_GeneralSettingsFoldout)
             {
                 EditorGUI.indentLevel++;
@@ -156,11 +164,12 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
                 EditorGUILayout.Space();
                 EditorGUILayout.Space();
             }
+            EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
         void DrawQualitySettings()
         {
-            m_QualitySettingsFoldout = EditorGUILayout.Foldout(m_QualitySettingsFoldout, Styles.qualitySettingsText, true);
+            m_QualitySettingsFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_QualitySettingsFoldout, Styles.qualitySettingsText);
             if (m_QualitySettingsFoldout)
             {
                 EditorGUI.indentLevel++;
@@ -171,11 +180,12 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
                 EditorGUILayout.Space();
                 EditorGUILayout.Space();
             }
+            EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
         void DrawLightingSettings()
         {
-            m_LightingSettingsFoldout = EditorGUILayout.Foldout(m_LightingSettingsFoldout, Styles.lightingSettingsText, true);
+            m_LightingSettingsFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_LightingSettingsFoldout, Styles.lightingSettingsText);
             if (m_LightingSettingsFoldout)
             {
                 EditorGUI.indentLevel++;
@@ -201,9 +211,9 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
                 EditorGUI.indentLevel--;
                 EditorGUILayout.Space();
 
-                // Additional light Shadows
-                // TODO: We need to change the order of the dropdown menu here. We want to display {None, Vertex Lighting, Pixel Lighting}
-                CoreEditorUtils.DrawPopup(Styles.addditionalLightsRenderingModeText, m_AdditionalLightsRenderingModeProp, Styles.additionalLightsOptions);
+                // Additional light
+                selectedLightRenderingMode = (LightRenderingMode)EditorGUILayout.EnumPopup(Styles.addditionalLightsRenderingModeText, selectedLightRenderingMode);
+                m_AdditionalLightsRenderingModeProp.intValue = (int)selectedLightRenderingMode;
                 EditorGUI.indentLevel++;
 
                 disableGroup = m_AdditionalLightsRenderingModeProp.intValue != (int)LightRenderingMode.PerPixel;
@@ -227,11 +237,12 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
                 EditorGUILayout.Space();
                 EditorGUILayout.Space();
             }
+            EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
         void DrawShadowSettings()
         {
-            m_ShadowSettingsFoldout = EditorGUILayout.Foldout(m_ShadowSettingsFoldout, Styles.shadowSettingsText);
+            m_ShadowSettingsFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_ShadowSettingsFoldout, Styles.shadowSettingsText);
             if (m_ShadowSettingsFoldout)
             {
                 EditorGUI.indentLevel++;
@@ -249,11 +260,12 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
                 EditorGUILayout.Space();
                 EditorGUILayout.Space();
             }
+            EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
         void DrawAdvancedSettings()
         {
-            m_AdvancedSettingsFoldout = EditorGUILayout.Foldout(m_AdvancedSettingsFoldout, Styles.advancedSettingsText, true);
+            m_AdvancedSettingsFoldout = EditorGUILayout.Foldout(m_AdvancedSettingsFoldout, Styles.advancedSettingsText);
             if (m_AdvancedSettingsFoldout)
             {
                 EditorGUI.indentLevel++;
@@ -263,6 +275,7 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
                 EditorGUILayout.Space();
                 EditorGUILayout.Space();
             }
+
         }
     }
 }
