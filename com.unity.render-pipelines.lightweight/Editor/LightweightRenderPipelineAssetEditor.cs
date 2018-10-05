@@ -60,7 +60,7 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
             public static GUIContent XRConfig = EditorGUIUtility.TrTextContent("XR Graphics Settings", "SRP will attempt to set this configuration to the VRDevice.");
         }
 
-        internal static LightRenderingMode selectedLightRenderingMode = LightRenderingMode.Disabled;
+
 
         bool m_GeneralSettingsFoldout = false;
         bool m_QualitySettingsFoldout = false;
@@ -101,6 +101,8 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
         SerializedProperty m_MixedLightingSupportedProp;
 
         SerializedProperty m_XRConfig;
+
+        internal static LightRenderingMode selectedLightRenderingMode;
 
         public override void OnInspectorGUI()
         {
@@ -145,6 +147,8 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
             m_MixedLightingSupportedProp = serializedObject.FindProperty("m_MixedLightingSupported");
 
             m_XRConfig = serializedObject.FindProperty("m_SavedXRConfig");
+
+            selectedLightRenderingMode = (LightRenderingMode)m_AdditionalLightsRenderingModeProp.intValue;
         }
 
         void DrawGeneralSettings()
@@ -265,7 +269,7 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
 
         void DrawAdvancedSettings()
         {
-            m_AdvancedSettingsFoldout = EditorGUILayout.Foldout(m_AdvancedSettingsFoldout, Styles.advancedSettingsText);
+            m_AdvancedSettingsFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_AdvancedSettingsFoldout, Styles.advancedSettingsText);
             if (m_AdvancedSettingsFoldout)
             {
                 EditorGUI.indentLevel++;
@@ -275,7 +279,7 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
                 EditorGUILayout.Space();
                 EditorGUILayout.Space();
             }
-
+            EditorGUILayout.EndFoldoutHeaderGroup();
         }
     }
 }
