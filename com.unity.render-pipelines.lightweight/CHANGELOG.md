@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added occlusion mesh rendering/hookup for VR
 - You can now configure default depth and normal shadow bias values in the pipeline asset.
 - You can now add the `LWRPAdditionalLightData` component to a `Light` to override the default depth and normal shadow bias.
+- You can now selected to log the amount of shader variants in the build by selecting `Shader Variant Log Level` under `Advanced` group in the pipeline asset.
+### Changed
+- Removed `supportedShaderFeatures` property from LWRP core. The shader stripper now figures which variants to strip based on the current assigned pipeline asset in graphics settings.
 ### Fixed
+- Previously projects were taking an insane amount of time to build when building from Cloud Build. Now, shader variant stripping is working when building a project using CloudBuild.
 - Dynamic Objects now receive lighting when the light mode is set to mixed.
 - MSAA now works on Desktop platforms.
 - The shadow bias value is now computed correctly for shadow cascades and different shadow resolutions. [case 1076285](https://issuetracker.unity3d.com/issues/lwrp-realtime-directional-light-shadow-maps-exhibit-artifacts)
