@@ -4,151 +4,35 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.Reflection;
+using System.Linq.Expressions;
 
 namespace UnityEngine.Experimental.Rendering
 {
-    public class Gizmo6FacesBox
+    public class HierarchicalBox
     {
         const float k_HandleSizeCoef = 0.05f;
 
-        protected enum NamedFace { Right, Top, Front, Left, Bottom, Back, None }
-        protected enum Element { Face, SelectedFace, Handle }
+        enum NamedFace { Right, Top, Front, Left, Bottom, Back, None }
 
-        Mesh m_face = null;
+        readonly Mesh m_Face;
+        readonly Material m_Material;
+        readonly Color[] m_PolychromeHandleColor;
+        readonly Color m_MonochromeHandleColor;
 
-        Mesh face
+        readonly HierarchicalBox m_container;
+
+        private bool m_MonoHandle = true;
+        public bool monoHandle
         {
             get
             {
-                if (m_face == null)
-                {
-                    m_face = new Mesh();
-                    m_face.vertices = new Vector3[] {
-                        new Vector3(-.5f,-.5f,0f),
-                        new Vector3(+.5f,-.5f,0f),
-                        new Vector3(+.5f,+.5f,0f),
-                        new Vector3(-.5f,+.5f,0f)
-                    };
-                    m_face.triangles = new int[] {
-                        0, 1, 2,
-                        2, 3, 0
-                    };
-                    m_face.RecalculateNormals();
-                }
-                return m_face;
-            }
-        }
-
-        Color[] m_faceColorsSelected;
-
-        public Color[] faceColorsSelected
-        {
-            get
-            {
-                return m_faceColorsSelected ?? (m_faceColorsSelected = monochromeSelectedFace
-                    ? new Color[]
-                    {
-                        new Color(1f, 1f, 1f, .15f)
-                    }
-                    : new Color[]
-                    {
-                        new Color(1f, 0f, 0f, .15f),
-                        new Color(0f, 1f, 0f, .15f),
-                        new Color(0f, 0f, 1f, .15f),
-                        new Color(1f, 0f, 0f, .15f),
-                        new Color(0f, 1f, 0f, .15f),
-                        new Color(0f, 0f, 1f, .15f)
-                    });
+                return m_MonoHandle;
             }
             set
             {
-                if (value == null)
-                {
-                    throw new ArgumentNullException("FaceColor cannot be set to null.");
-                }
-                if (value.Length != (monochromeSelectedFace ? 1 : 6))
-                {
-                    throw new ArgumentException("FaceColor must have 6 entries: X Y Z -X -Y -Z or only one in monochrome mode");
-                }
-                m_faceColorsSelected = value;
+                m_MonoHandle = value;
             }
         }
-
-        Color[] m_faceColors;
-
-        public Color[] faceColors
-        {
-            get
-            {
-                return m_faceColors ?? (m_faceColors = monochromeFace
-                    ? new Color[]
-                    {
-                        new Color(.5f, .5f, .5f, .15f)
-                    }
-                    : new Color[]
-                    {
-                        new Color(.5f, 0f, 0f, .15f),
-                        new Color(0f, .5f, 0f, .15f),
-                        new Color(0f, 0f, .5f, .15f),
-                        new Color(.5f, 0f, 0f, .15f),
-                        new Color(0f, .5f, 0f, .15f),
-                        new Color(0f, 0f, .5f, .15f)
-                    });
-            }
-            set
-            {
-                if (value == null)
-                {
-                    throw new ArgumentNullException("FaceColor cannot be set to null.");
-                }
-                if (value.Length != (monochromeFace ? 1 : 6))
-                {
-                    throw new ArgumentException("FaceColor must have 6 entries: X Y Z -X -Y -Z or only one in monochrome mode");
-                }
-                m_faceColors = value;
-            }
-        }
-
-        Color[] m_handleColors;
-
-        public Color[] handleColors
-        {
-            get
-            {
-                return m_handleColors ?? (m_handleColors = monochromeHandle
-                    ? new Color[]
-                    {
-                        new Color(1f, 0f, 0f, 1f)
-                    }
-                    : new Color[]
-                    {
-                        new Color(1f, 0f, 0f, 1f),
-                        new Color(0f, 1f, 0f, 1f),
-                        new Color(0f, 0f, 1f, 1f),
-                        new Color(1f, 0f, 0f, 1f),
-                        new Color(0f, 1f, 0f, 1f),
-                        new Color(0f, 0f, 1f, 1f)
-                    });
-            }
-            set
-            {
-                if (value == null)
-                {
-                    throw new ArgumentNullException("HandleColor cannot be set to null.");
-                }
-                if (value.Length != (monochromeHandle ? 1 : 6))
-                {
-                    throw new ArgumentException("HandleColor must have 6 entries: X Y Z -X -Y -Z or only one in monochrome mode");
-                }
-                m_handleColors = value;
-            }
-        }
-
-        public readonly bool monochromeHandle;
-        public readonly bool monochromeFace;
-        public readonly bool monochromeSelectedFace;
-
-        public bool allHandleControledByOne = false;
 
         private int[] m_ControlIDs = new int[6] { 0, 0, 0, 0, 0, 0 };
 
@@ -156,53 +40,35 @@ namespace UnityEngine.Experimental.Rendering
 
         public Vector3 size { get; set; }
 
-        public Gizmo6FacesBox(bool monochromeHandle = false, bool monochromeFace = false, bool monochromeSelectedFace = false)
+        Func<int, Vector3, Vector3, Color, Vector3> LinearSlider;
+
+        static HierarchicalBox()
         {
-            this.monochromeHandle = monochromeHandle;
-            this.monochromeFace = monochromeFace;
-            this.monochromeSelectedFace = monochromeSelectedFace;
-        }
-
-        protected Color GetColor(NamedFace name, Element element)
-        {
-            switch(element)
-            {
-                default:
-                case Element.Face: return faceColors[monochromeFace ? 0 : (int)name];
-                case Element.SelectedFace: return faceColorsSelected[monochromeSelectedFace ? 0 : (int)name];
-                case Element.Handle: return handleColors[monochromeHandle ? 0 : (int)name];
-            }
-        }
-
-        public virtual void DrawHull(bool selected)
-        {
-            Color colorGizmo = Gizmos.color;
-
-            Element element = selected ? Element.SelectedFace : Element.Face;
-
-            if (selected)
-            {
-                Vector3 xSize = new Vector3(size.z, size.y, 1f);
-                Gizmos.color = GetColor(NamedFace.Left, element);
-                Gizmos.DrawMesh(face, center + size.x * .5f * Vector3.left, Quaternion.FromToRotation(Vector3.forward, Vector3.left), xSize);
-                Gizmos.color = GetColor(NamedFace.Right, element);
-                Gizmos.DrawMesh(face, center + size.x * .5f * Vector3.right, Quaternion.FromToRotation(Vector3.forward, Vector3.right), xSize);
-
-                Vector3 ySize = new Vector3(size.x, size.z, 1f);
-                Gizmos.color = GetColor(NamedFace.Top, element);
-                Gizmos.DrawMesh(face, center + size.y * .5f * Vector3.up, Quaternion.FromToRotation(Vector3.forward, Vector3.up), ySize);
-                Gizmos.color = GetColor(NamedFace.Bottom, element);
-                Gizmos.DrawMesh(face, center + size.y * .5f * Vector3.down, Quaternion.FromToRotation(Vector3.forward, Vector3.down), ySize);
-
-                Vector3 zSize = new Vector3(size.x, size.y, 1f);
-                Gizmos.color = GetColor(NamedFace.Front, element);
-                Gizmos.DrawMesh(face, center + size.z * .5f * Vector3.forward, Quaternion.identity, zSize);
-                Gizmos.color = GetColor(NamedFace.Back, element);
-                Gizmos.DrawMesh(face, center + size.z * .5f * Vector3.back, Quaternion.FromToRotation(Vector3.forward, Vector3.back), zSize);
-            }
-
-            Gizmos.color = colorGizmo;
-            Gizmos.DrawWireCube(center, size);
+            var DotCapHandle = new Handles.CapFunction(Handles.DotHandleCap);
+            Type SnapSettings = Type.GetType("UnityEditor.SnapSettings, UnityEditor");
+            Type Slider1D = Type.GetType("UnityEditorInternal.Slider1D, UnityEditor");
+            var controlIDParam = Expression.Parameter(typeof(int), "controlID");
+            var positionParam = Expression.Parameter(typeof(Vector3), "handlePosition");
+            var orientationParam = Expression.Parameter(typeof(Vector3), "handleOrientation");
+            var colorParam = Expression.Parameter(typeof(Color), "color");
+            var snapScaleVarialble = Expression.Variable(typeof(float), "snapScale");
+            var refPositionVariable = Expression.Variable(typeof(float), "refPosition");
+            var colorVariable = Expression.Variable(typeof(Color), "previousColor");
+            var colorParam = Expression.Parameter(typeof(Color), "color");
+            var scaleInfo = SnapSettings.GetProperty("scale");
+            var getHandleSizeInfo = SnapSettings.GetMethod("GetHandleSize", BindingFlags.Static | BindingFlags.Public, null, CallingConventions.Any, new[] { typeof(Vector3) }, null);
+            var slider1DInfo = Slider1D.GetMethod("Do", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public, null, CallingConventions.Any, new[] { typeof(int), typeof(Vector3), typeof(Vector3), typeof(float), typeof(Handles.CapFunction), typeof(float) }, null);
+            var capFunctionInfo = typeof(Handles).GetMethod("CapFunction", BindingFlags.Static | BindingFlags.Public, null, CallingConventions.Any, new[] { typeof(Handles.CapFunction) }, null);
+            var linearSliderBlock = Expression.Block(
+                new[] { snapScaleVarialble, refPositionVariable, computedSizeVariable, colorVariable },
+                Expression.Assign(refPositionVariable, positionParam),
+                Expression.Assign(snapScaleVarialble, Expression.Call(scaleInfo.GetGetMethod())),
+                Expression.Assign(computedSizeVariable, Expression.Multiply(Expression.Call(getHandleSizeInfo, positionParam), Expression.Constant(k_HandleSizeCoef))),
+                Expression.Call(slider1DInfo, controlIDParam, refPositionVariable, orientationParam, computedSizeVariable, Expression.Constant(DotCapHandle.Target), snapScaleVarialble),
+                refPositionVariable
+                );
+            var linearSliderLambda = Expression.Lambda<Func<int, Vector3, Vector3, Color, Vector3>>(linearSliderBlock, controlIDParam, positionParam, orientationParam, colorParam);
+            BeginVerticalSplit = beginHorizontalSplitLambda.Compile();
         }
 
         //Note: Handles.Slider not allow to use a specific ControlID.
@@ -217,7 +83,6 @@ namespace UnityEngine.Experimental.Rendering
                     CallingConventions.Any,
                     new[] { typeof(int), typeof(Vector3), typeof(Vector3), typeof(float), typeof(Handles.CapFunction), typeof(float) },
                     null);
-
         static void Slider1D(int controlID, ref Vector3 handlePosition, Vector3 handleOrientation, float snapScale, Color color)
         {
             using (new Handles.DrawingScope(color))
@@ -232,6 +97,89 @@ namespace UnityEngine.Experimental.Rendering
                         snapScale
                     });
             }
+        }
+
+        public HierarchicalBox(Color faceColor, Color[] polychromeHandleColors = null, HierarchicalBox container = null)
+        {
+            m_container = container;
+            m_Material = new Material(Shader.Find("Hidden/UnlitTransparentColored"));
+            m_Material.color = faceColor.gamma;
+            m_Face = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            if(polychromeHandleColors != null && polychromeHandleColors.Length != 6)
+            {
+                throw new System.ArgumentException("polychromeHandleColors must be null or have a size of 6.");
+            }
+            m_PolychromeHandleColor = polychromeHandleColors ?? new Color[]
+            {
+                new Color(1f, 0f, 0f, 1f),
+                new Color(0f, 1f, 0f, 1f),
+                new Color(0f, 0f, 1f, 1f),
+                new Color(1f, 0f, 0f, 1f),
+                new Color(0f, 1f, 0f, 1f),
+                new Color(0f, 0f, 1f, 1f)
+            };
+            faceColor.a = 0.7f;
+            m_MonochromeHandleColor = faceColor;
+        }
+
+        Color GetHandleColor(NamedFace name)
+        {
+            return monoHandle ? m_MonochromeHandleColor : m_PolychromeHandleColor[(int)name];
+        }
+
+        public void DrawHull(bool selected)
+        {
+            if (selected)
+            {
+                Vector3 xSize = new Vector3(size.z, size.y, 1f);
+                m_Material.SetPass(0);
+                Graphics.DrawMeshNow(m_Face, Handles.matrix * Matrix4x4.TRS(center + size.x * .5f * Vector3.left, Quaternion.FromToRotation(Vector3.forward, Vector3.left), xSize));
+                Graphics.DrawMeshNow(m_Face, Handles.matrix * Matrix4x4.TRS(center + size.x * .5f * Vector3.right, Quaternion.FromToRotation(Vector3.forward, Vector3.right), xSize));
+                
+                Vector3 ySize = new Vector3(size.x, size.z, 1f);
+                Graphics.DrawMeshNow(m_Face, Handles.matrix * Matrix4x4.TRS(center + size.y * .5f * Vector3.up, Quaternion.FromToRotation(Vector3.forward, Vector3.up), ySize));
+                Graphics.DrawMeshNow(m_Face, Handles.matrix * Matrix4x4.TRS(center + size.y * .5f * Vector3.down, Quaternion.FromToRotation(Vector3.forward, Vector3.down), ySize));
+
+                Vector3 zSize = new Vector3(size.x, size.y, 1f);
+                Graphics.DrawMeshNow(m_Face, Handles.matrix * Matrix4x4.TRS(center + size.z * .5f * Vector3.forward, Quaternion.identity, zSize));
+                Graphics.DrawMeshNow(m_Face, Handles.matrix * Matrix4x4.TRS(center + size.z * .5f * Vector3.back, Quaternion.FromToRotation(Vector3.forward, Vector3.back), zSize));
+
+                //if contained, also draw handle distance to container here
+                if (m_container != null)
+                {
+                    Vector3 centerDiff = center - m_container.center;
+                    Vector3 xRecal = centerDiff;
+                    Vector3 yRecal = centerDiff;
+                    Vector3 zRecal = centerDiff;
+                    xRecal.x = 0;
+                    yRecal.y = 0;
+                    zRecal.z = 0;
+
+                    Color previousColor = Handles.color;
+                    Handles.color = m_container.GetHandleColor(NamedFace.Left);
+                    Debug.Log(Handles.color);
+                    Handles.DrawLine(m_container.center + xRecal + m_container.size.x * .5f * Vector3.left, center + size.x * .5f * Vector3.left);
+
+                    Handles.color = m_container.GetHandleColor(NamedFace.Right);
+                    Handles.DrawLine(m_container.center + xRecal + m_container.size.x * .5f * Vector3.right, center + size.x * .5f * Vector3.right);
+
+                    Handles.color = m_container.GetHandleColor(NamedFace.Top);
+                    Handles.DrawLine(m_container.center + yRecal + m_container.size.y * .5f * Vector3.up, center + size.y * .5f * Vector3.up);
+
+                    Handles.color = m_container.GetHandleColor(NamedFace.Bottom);
+                    Handles.DrawLine(m_container.center + yRecal + m_container.size.y * .5f * Vector3.down, center + size.y * .5f * Vector3.down);
+
+                    Handles.color = m_container.GetHandleColor(NamedFace.Front);
+                    Handles.DrawLine(m_container.center + zRecal + m_container.size.z * .5f * Vector3.forward, center + size.z * .5f * Vector3.forward);
+
+                    Handles.color = m_container.GetHandleColor(NamedFace.Back);
+                    Handles.DrawLine(m_container.center + zRecal + m_container.size.z * .5f * Vector3.back, center + size.z * .5f * Vector3.back);
+
+                    Handles.color = previousColor;
+                }
+            }
+
+            Handles.DrawWireCube(center, size);
         }
 
         public void DrawHandle()
@@ -252,42 +200,42 @@ namespace UnityEngine.Experimental.Rendering
             NamedFace theChangedFace = NamedFace.None;
 
             EditorGUI.BeginChangeCheck();
-            Slider1D(m_ControlIDs[(int)NamedFace.Left], ref leftPosition, Vector3.left, snapScale, GetColor(NamedFace.Left, Element.Handle));
-            if (EditorGUI.EndChangeCheck() && allHandleControledByOne)
+            SliderLineHandle()
+            Slider1D(m_ControlIDs[(int)NamedFace.Left], ref leftPosition, Vector3.left, snapScale, GetHandleColor(NamedFace.Left));
+            if (EditorGUI.EndChangeCheck() && monoHandle)
                 theChangedFace = NamedFace.Left;
 
             EditorGUI.BeginChangeCheck();
-            using (new Handles.DrawingScope(GetColor(NamedFace.Right, Element.Handle)))
-            Slider1D(m_ControlIDs[(int)NamedFace.Right], ref rightPosition, Vector3.right, snapScale, GetColor(NamedFace.Right, Element.Handle));
-            if (EditorGUI.EndChangeCheck() && allHandleControledByOne)
+            Slider1D(m_ControlIDs[(int)NamedFace.Right], ref rightPosition, Vector3.right, snapScale, GetHandleColor(NamedFace.Right));
+            if (EditorGUI.EndChangeCheck() && monoHandle)
                 theChangedFace = NamedFace.Right;
 
             EditorGUI.BeginChangeCheck();
-            Slider1D(m_ControlIDs[(int)NamedFace.Top], ref topPosition, Vector3.up, snapScale, GetColor(NamedFace.Top, Element.Handle));
-            if (EditorGUI.EndChangeCheck() && allHandleControledByOne)
+            Slider1D(m_ControlIDs[(int)NamedFace.Top], ref topPosition, Vector3.up, snapScale, GetHandleColor(NamedFace.Top));
+            if (EditorGUI.EndChangeCheck() && monoHandle)
                 theChangedFace = NamedFace.Top;
 
             EditorGUI.BeginChangeCheck();
-            Slider1D(m_ControlIDs[(int)NamedFace.Bottom], ref bottomPosition, Vector3.down, snapScale, GetColor(NamedFace.Bottom, Element.Handle));
-            if (EditorGUI.EndChangeCheck() && allHandleControledByOne)
+            Slider1D(m_ControlIDs[(int)NamedFace.Bottom], ref bottomPosition, Vector3.down, snapScale, GetHandleColor(NamedFace.Bottom));
+            if (EditorGUI.EndChangeCheck() && monoHandle)
                 theChangedFace = NamedFace.Bottom;
 
             EditorGUI.BeginChangeCheck();
-            Slider1D(m_ControlIDs[(int)NamedFace.Front], ref frontPosition, Vector3.forward, snapScale, GetColor(NamedFace.Front, Element.Handle));
-            if (EditorGUI.EndChangeCheck() && allHandleControledByOne)
+            Slider1D(m_ControlIDs[(int)NamedFace.Front], ref frontPosition, Vector3.forward, snapScale, GetHandleColor(NamedFace.Front));
+            if (EditorGUI.EndChangeCheck() && monoHandle)
                 theChangedFace = NamedFace.Front;
 
             EditorGUI.BeginChangeCheck();
-            Slider1D(m_ControlIDs[(int)NamedFace.Back], ref backPosition, Vector3.back, snapScale, GetColor(NamedFace.Back, Element.Handle));
-            if (EditorGUI.EndChangeCheck() && allHandleControledByOne)
+            Slider1D(m_ControlIDs[(int)NamedFace.Back], ref backPosition, Vector3.back, snapScale, GetHandleColor(NamedFace.Back));
+            if (EditorGUI.EndChangeCheck() && monoHandle)
                 theChangedFace = NamedFace.Back;
 
             if (EditorGUI.EndChangeCheck())
             {
-                if(allHandleControledByOne)
+                if (monoHandle)
                 {
                     float decal = 0f;
-                    switch(theChangedFace)
+                    switch (theChangedFace)
                     {
                         case NamedFace.Left:
                             decal = (leftPosition - center - size.x * .5f * Vector3.left).x;
@@ -346,68 +294,6 @@ namespace UnityEngine.Experimental.Rendering
                     size = max - min;
                 }
             }
-        }
-    }
-
-    public class Gizmo6FacesBoxContained : Gizmo6FacesBox
-    {
-        private Gizmo6FacesBox m_container;
-
-        public Gizmo6FacesBox container
-        {
-            get
-            {
-                return m_container;
-            }
-            set
-            {
-                if (value == null)
-                    throw new System.ArgumentNullException("Container cannot be null. Use Gizmo6FacesBox instead.");
-                m_container = value;
-            }
-        }
-
-        public Gizmo6FacesBoxContained(Gizmo6FacesBox container, bool monochromeHandle = false, bool monochromeFace = false, bool monochromeSelectedFace = false) : base(monochromeHandle, monochromeFace, monochromeSelectedFace)
-        {
-            m_container = container;
-        }
-
-        public override void DrawHull(bool selected)
-        {
-            Color colorGizmo = Gizmos.color;
-            base.DrawHull(selected);
-
-            //if selected, also draw handle distance to container here
-            if (selected)
-            {
-                Vector3 centerDiff = center - m_container.center;
-                Vector3 xRecal = centerDiff;
-                Vector3 yRecal = centerDiff;
-                Vector3 zRecal = centerDiff;
-                xRecal.x = 0;
-                yRecal.y = 0;
-                zRecal.z = 0;
-
-                Gizmos.color = GetColor(NamedFace.Left, Element.Handle);
-                Gizmos.DrawLine(m_container.center + xRecal + m_container.size.x * .5f * Vector3.left, center + size.x * .5f * Vector3.left);
-
-                Gizmos.color = GetColor(NamedFace.Right, Element.Handle);
-                Gizmos.DrawLine(m_container.center + xRecal + m_container.size.x * .5f * Vector3.right, center + size.x * .5f * Vector3.right);
-
-                Gizmos.color = GetColor(NamedFace.Top, Element.Handle);
-                Gizmos.DrawLine(m_container.center + yRecal + m_container.size.y * .5f * Vector3.up, center + size.y * .5f * Vector3.up);
-
-                Gizmos.color = GetColor(NamedFace.Bottom, Element.Handle);
-                Gizmos.DrawLine(m_container.center + yRecal + m_container.size.y * .5f * Vector3.down, center + size.y * .5f * Vector3.down);
-
-                Gizmos.color = GetColor(NamedFace.Front, Element.Handle);
-                Gizmos.DrawLine(m_container.center + zRecal + m_container.size.z * .5f * Vector3.forward, center + size.z * .5f * Vector3.forward);
-
-                Gizmos.color = GetColor(NamedFace.Back, Element.Handle);
-                Gizmos.DrawLine(m_container.center + zRecal + m_container.size.z * .5f * Vector3.back, center + size.z * .5f * Vector3.back);
-            }
-
-            Gizmos.color = colorGizmo;
         }
     }
 }

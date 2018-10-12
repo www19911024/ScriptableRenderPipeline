@@ -46,30 +46,27 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
             InfluenceVolumeUI s, InfluenceVolume d, Matrix4x4 matrix,
             bool isSolid, Color color)
         {
-            var mat = Gizmos.matrix;
-            var c = Gizmos.color;
-            Gizmos.matrix = matrix;
-            Gizmos.color = color;
-            switch (d.shape)
+            using (new Handles.DrawingScope(color, matrix))
             {
-                case InfluenceShape.Box:
+                switch (d.shape)
                 {
-                    s.boxBaseHandle.center = d.offset;
-                    s.boxBaseHandle.size = d.boxSize;
-                    s.boxBaseHandle.DrawHull(isSolid);
-                    break;
-                }
-                case InfluenceShape.Sphere:
-                {
-                    if (isSolid)
-                        Gizmos.DrawSphere(d.offset, d.sphereRadius);
-                    else
-                        Gizmos.DrawWireSphere(d.offset, d.sphereRadius);
-                    break;
+                    case InfluenceShape.Box:
+                        {
+                            s.boxBaseHandle.center = d.offset;
+                            s.boxBaseHandle.size = d.boxSize;
+                            s.boxBaseHandle.DrawHull(isSolid);
+                            break;
+                        }
+                    case InfluenceShape.Sphere:
+                        {
+                            if (isSolid)
+                                Gizmos.DrawSphere(d.offset, d.sphereRadius);
+                            else
+                                Gizmos.DrawWireSphere(d.offset, d.sphereRadius);
+                            break;
+                        }
                 }
             }
-            Gizmos.matrix = mat;
-            Gizmos.color = c;
         }
 
         static void DrawGizmos_FadeHandle(
@@ -78,31 +75,28 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
             float sphereOffset,
             bool isSolid, Color color, bool isNormal)
         {
-            var mat = Gizmos.matrix;
-            var c = Gizmos.color;
-            Gizmos.matrix = matrix;
-            Gizmos.color = color;
-            switch (d.shape)
+            using (new Handles.DrawingScope(color, matrix))
             {
-                case InfluenceShape.Box:
+                switch (d.shape)
                 {
-                    Gizmo6FacesBox refBox = isNormal ? s.boxInfluenceNormalHandle : s.boxInfluenceHandle;
-                    refBox.center = d.offset + boxOffset;
-                    refBox.size = d.boxSize + boxSizeOffset;
-                    refBox.DrawHull(isSolid);
-                    break;
-                }
-                case InfluenceShape.Sphere:
-                {
-                    if (isSolid)
-                        Gizmos.DrawSphere(d.offset, d.sphereRadius + sphereOffset);
-                    else
-                        Gizmos.DrawWireSphere(d.offset, d.sphereRadius + sphereOffset);
-                    break;
+                    case InfluenceShape.Box:
+                        {
+                            HierarchicalBox refBox = isNormal ? s.boxInfluenceNormalHandle : s.boxInfluenceHandle;
+                            refBox.center = d.offset + boxOffset;
+                            refBox.size = d.boxSize + boxSizeOffset;
+                            refBox.DrawHull(isSolid);
+                            break;
+                        }
+                    case InfluenceShape.Sphere:
+                        {
+                            if (isSolid)
+                                Gizmos.DrawSphere(d.offset, d.sphereRadius + sphereOffset);
+                            else
+                                Gizmos.DrawWireSphere(d.offset, d.sphereRadius + sphereOffset);
+                            break;
+                        }
                 }
             }
-            Gizmos.matrix = mat;
-            Gizmos.color = c;
         }
     }
 }

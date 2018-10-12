@@ -71,9 +71,9 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
                 bool advanced = d.editorAdvancedModeEnabled.boolValue;
                 advanced = !GUILayout.Toggle(!advanced, normalModeContent, EditorStyles.miniButtonLeft, GUILayout.Width(60f), GUILayout.ExpandWidth(false));
                 advanced = GUILayout.Toggle(advanced, advancedModeContent, EditorStyles.miniButtonRight, GUILayout.Width(60f), GUILayout.ExpandWidth(false));
-                s.boxInfluenceHandle.allHandleControledByOne = s.boxInfluenceNormalHandle.allHandleControledByOne = !advanced;
                 if (d.editorAdvancedModeEnabled.boolValue ^ advanced)
                 {
+                    s.boxInfluenceHandle.monoHandle = s.boxInfluenceNormalHandle.monoHandle = !advanced;
                     d.editorAdvancedModeEnabled.boolValue = advanced;
                     if (advanced)
                     {

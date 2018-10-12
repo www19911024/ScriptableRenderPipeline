@@ -87,7 +87,7 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
             }
         }
 
-        static void DrawBoxHandle(InfluenceVolumeUI s, SerializedInfluenceVolume d, Editor o, Object sourceAsset, Gizmo6FacesBox box)
+        static void DrawBoxHandle(InfluenceVolumeUI s, SerializedInfluenceVolume d, Editor o, Object sourceAsset, HierarchicalBox box)
         {
             box.center = d.offset.vector3Value;
             box.size = d.boxSize.vector3Value;
@@ -154,11 +154,10 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
             }
         }
 
-        static void DrawBoxFadeHandle(InfluenceVolumeUI s, SerializedInfluenceVolume d, Editor o, Object sourceAsset, Gizmo6FacesBox box, SerializedProperty positive, SerializedProperty negative)
+        static void DrawBoxFadeHandle(InfluenceVolumeUI s, SerializedInfluenceVolume d, Editor o, Object sourceAsset, HierarchicalBox box, SerializedProperty positive, SerializedProperty negative)
         {
             box.center = d.offset.vector3Value - (positive.vector3Value - negative.vector3Value) * 0.5f;
             box.size = d.boxSize.vector3Value - positive.vector3Value - negative.vector3Value;
-            box.allHandleControledByOne = !d.editorAdvancedModeEnabled.boolValue;
 
             EditorGUI.BeginChangeCheck();
             box.DrawHandle();

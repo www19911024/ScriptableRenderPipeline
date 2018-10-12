@@ -49,7 +49,7 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
             }
         }
 
-        [DrawGizmo(GizmoType.Selected)]
+        [DrawGizmo(GizmoType.Selected|GizmoType.Active)]
         internal static void DrawGizmos(HDProbe d, GizmoType gizmoType)
         {
             HDProbeUI s;

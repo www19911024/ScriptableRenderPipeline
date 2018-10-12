@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.HDPipeline;
+using System.Collections.Generic;
 
 namespace UnityEditor.Experimental.Rendering.HDPipeline
 {
@@ -8,6 +9,8 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
     [CustomEditor(typeof(DensityVolume))]
     class DensityVolumeEditor : Editor
     {
+        const int maxDisplayedBox = 10;
+
         static readonly GUIContent s_Size = new GUIContent("Size", "The size of this density volume which is transform's scale independent.");
         static readonly GUIContent s_AlbedoLabel = new GUIContent("Single Scattering Albedo", "Hue and saturation control the color of the fog (the wavelength of in-scattered light). Value controls scattering (0 = max absorption & no scattering, 1 = no absorption & max scattering).");
         static readonly GUIContent s_MeanFreePathLabel = new GUIContent("Mean Free Path", "Controls the density, which determines how far you can seen through the fog. It's the distance in meters at which 50% of background light is lost in the fog (due to absorption and out-scattering).");
@@ -17,6 +20,8 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
         static readonly GUIContent s_PositiveFadeLabel = new GUIContent("Positive Fade", "Controls the [0, 1] distance from the +X/+Y/+Z face at which a linear fade ends. 0 means no fade, 1 means the fade ends at the opposite face.");
         static readonly GUIContent s_NegativeFadeLabel = new GUIContent("Negative Fade", "Controls the [0, 1] distance from the -X/-Y/-Z face at which a linear fade ends. 0 means no fade, 1 means the fade ends at the opposite face.");
         static readonly GUIContent s_InvertFadeLabel = new GUIContent("Invert Fade", "Inverts fade values in such a way that (0 -> 1), (0.5 -> 0.5) and (1 -> 0).");
+        static readonly GUIContent s_NormalModeContent = new GUIContent("Normal", "Normal parameters mode.");
+        static readonly GUIContent s_AdvancedModeContent = new GUIContent("Advanced", "Advanced parameters mode.");
 
         SerializedProperty densityParams;
         SerializedProperty albedo;
@@ -30,7 +35,12 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
 
         SerializedProperty positiveFade;
         SerializedProperty negativeFade;
+        SerializedProperty uniformFade;
+        SerializedProperty advancedFade;
         SerializedProperty invertFade;
+
+        static Dictionary<DensityVolume, HierarchicalBox> boxes = new Dictionary<DensityVolume, HierarchicalBox>();
+        static Dictionary<DensityVolume, Gizmo6FacesBoxContained> containedBoxes = new Dictionary<DensityVolume, Gizmo6FacesBoxContained>();
 
         void OnEnable()
         {
@@ -45,10 +55,20 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
 
             size = densityParams.FindPropertyRelative("size");
 
+            positiveFade = densityParams.FindPropertyRelative("m_PositiveFade");
+            negativeFade = densityParams.FindPropertyRelative("m_NegativeFade");
+            uniformFade = densityParams.FindPropertyRelative("m_UniformFade");
+            advancedFade = densityParams.FindPropertyRelative("advancedFade");
+            invertFade = densityParams.FindPropertyRelative("invertFade");
 
-            positiveFade  = densityParams.FindPropertyRelative("positiveFade");
-            negativeFade  = densityParams.FindPropertyRelative("negativeFade");
-            invertFade    = densityParams.FindPropertyRelative("invertFade");
+            boxes.Clear();
+            containedBoxes.Clear();
+            int max = Mathf.Min(targets.Length, maxDisplayedBox);
+            for (int i = 0; i < max; ++i)
+            {
+                var box = boxes[targets[i] as DensityVolume] = new HierarchicalBox(default(Color));
+                containedBoxes[targets[i] as DensityVolume] = new Gizmo6FacesBoxContained(box, default(Color));
+            }
         }
 
         public override void OnInspectorGUI()
@@ -92,6 +112,27 @@ namespace UnityEditor.Experimental.Rendering.HDPipeline
             }
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+
+        void Drawer_InfluenceAdvancedSwitch()
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.FlexibleSpace();
+
+                bool advanced = advancedFade.boolValue;
+                advanced = !GUILayout.Toggle(!advanced, s_NormalModeContent, EditorStyles.miniButtonLeft, GUILayout.Width(60f), GUILayout.ExpandWidth(false));
+                advanced = GUILayout.Toggle(advanced, s_AdvancedModeContent, EditorStyles.miniButtonRight, GUILayout.Width(60f), GUILayout.ExpandWidth(false));
+                foreach (var containedBox in containedBoxes.Values)
+                {
+                    containedBox.monoHandle = !advanced;
+                }
+                if (advancedFade.boolValue ^ advanced)
+                {
+                    advancedFade.boolValue = advanced;
+                }
+            }
         }
     }
 }
