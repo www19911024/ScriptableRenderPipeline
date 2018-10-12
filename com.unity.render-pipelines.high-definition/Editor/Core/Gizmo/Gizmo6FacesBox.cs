@@ -61,6 +61,10 @@ namespace UnityEngine.Experimental.Rendering
             var capFunctionInfo = typeof(Handles).GetMethod("CapFunction", BindingFlags.Static | BindingFlags.Public, null, CallingConventions.Any, new[] { typeof(Handles.CapFunction) }, null);
             var linearSliderBlock = Expression.Block(
                 new[] { snapScaleVarialble, refPositionVariable, computedSizeVariable, colorVariable },
+<<<<<<< Updated upstream
+=======
+                Expression.Assign(colorVariable, Expression.Handles.color),
+>>>>>>> Stashed changes
                 Expression.Assign(refPositionVariable, positionParam),
                 Expression.Assign(snapScaleVarialble, Expression.Call(scaleInfo.GetGetMethod())),
                 Expression.Assign(computedSizeVariable, Expression.Multiply(Expression.Call(getHandleSizeInfo, positionParam), Expression.Constant(k_HandleSizeCoef))),
