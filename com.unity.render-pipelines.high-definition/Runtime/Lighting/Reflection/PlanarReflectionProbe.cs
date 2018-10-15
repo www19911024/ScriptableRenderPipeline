@@ -129,7 +129,6 @@ namespace UnityEngine.Experimental.Rendering.HDPipeline
                 // Add here data migration code
                 if(m_Version < (uint)Version.MigrateOffsetSphere)
                 {
-                    influenceVolume.MigrateOffsetSphere();
                     //not used for planar, keep it clean
                     influenceVolume.boxBlendNormalDistanceNegative = Vector3.zero;
                     influenceVolume.boxBlendNormalDistancePositive = Vector3.zero;
