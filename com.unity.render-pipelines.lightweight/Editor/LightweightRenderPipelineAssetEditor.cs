@@ -60,8 +60,6 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
             public static GUIContent XRConfig = EditorGUIUtility.TrTextContent("XR Graphics Settings", "SRP will attempt to set this configuration to the VRDevice.");
         }
 
-
-
         bool m_GeneralSettingsFoldout = false;
         bool m_QualitySettingsFoldout = false;
         bool m_LightingSettingsFoldout = false;
@@ -93,7 +91,6 @@ namespace UnityEngine.Experimental.Rendering.LightweightPipeline
         SerializedProperty m_ShadowCascadesProp;
         SerializedProperty m_ShadowCascade2SplitProp;
         SerializedProperty m_ShadowCascade4SplitProp;
-
 
         SerializedProperty m_SoftShadowsSupportedProp;
 
